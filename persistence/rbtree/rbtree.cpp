@@ -1,4 +1,6 @@
+#include <iostream>
 #include "rbnode.hpp"
+#include <iterator>
 #include <memory>
 #include <vector>
 
@@ -14,7 +16,7 @@ class RBTree {
                 return heads[i];
             }
         }
-        return nullptr;
+        return std::shared_ptr<Node> {nullptr};
     }
 
     void modfy_node(std::shared_ptr<Node> &node, int value) {
@@ -54,12 +56,12 @@ class RBTree {
 
 
     public:
-    RBTree() : latest_version{0}, heads(100, nullptr) {}
+    RBTree() : latest_version{-1}, heads(100, nullptr) {}
+
 
     void insert(int value) {
         std::shared_ptr<Node> node;
         auto temp = get_head(latest_version);
-
         while(temp){
             node = temp;
             if(temp->get_value(latest_version) > value){
@@ -70,19 +72,50 @@ class RBTree {
         }
         
         std::shared_ptr<Node> new_node{ new Node(value) };
-        if(node) {
+        if(!node) {
             modfy_node(new_node, value);
         } else if (node->get_value(latest_version) > value) {
-            node->modfy_left(new_node, latest_version);
+            modfy_left(node.get(), new_node);
         } else {
-            node->modfy_right(new_node, latest_version);
+            modfy_right(node.get(), new_node);
         }
 
+    }
+
+    void print(int version){
+        inorder(get_head(version).get(), version);
+        std::cout << '\n';
+    }
+
+    void inorder(Node *node, int version){
+        if(!node){
+            return;
+        }
+        inorder(node->get_left(version).get(), version);
+        std::cout << node->get_value(version) << ' ';
+        inorder(node->get_right(version).get(), version);
     }
 
     ~RBTree() {}
 
 };
+
+
+int main() {
+    RBTree tree;
+    
+    tree.insert(20);
+    tree.insert(10);
+    tree.insert(30);
+    tree.insert(25);
+    tree.insert(35);
+    
+    for (int i = 0; i < 10; ++i){
+        tree.print(i);
+    }
+
+}
+
 
 
 

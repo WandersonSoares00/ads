@@ -2,7 +2,7 @@
 #define NODE_HPP
 
 #include <memory>
-
+#include <iostream>
 
 class Node {
 
@@ -67,7 +67,8 @@ class Node {
 
     public:
 
-    Node(int content) : content{content}, back{nullptr}, i{0}
+    Node(int content) : content{content}, left{nullptr}, right{nullptr},
+                        back{nullptr}, i{0}
     {
         changes[0].field = None;
         changes[1].field = None;
@@ -104,8 +105,8 @@ class Node {
         auto right_node = right;
 
         for (int v = 0; v < 2; ++v){
-            if (changes[v].field == Left and changes[v].version <= version){
-            right_node = changes[v].new_right;
+            if (changes[v].field == Right and changes[v].version <= version){
+                right_node = changes[v].new_right;
             }
         }
         
@@ -157,6 +158,7 @@ class Node {
         if (i < 2){
             changes[i].field = Left;
             changes[i].new_left = left_node;
+            //left_node->back = this;
             changes[i].version = latest_version+1;
             ++i;
         } else {
@@ -195,7 +197,7 @@ class Node {
     std::shared_ptr<Node> modfy_right(std::shared_ptr<Node> &right_node, int latest_version) {
         if (i < 2){
             changes[i].field = Right;
-            changes[i].new_left = right_node;
+            changes[i].new_right = right_node;
             changes[i].version = latest_version+1;
             ++i;
         } else {
