@@ -7,17 +7,18 @@
 class Node {
 
     int content;
+    char color;
     std::shared_ptr<Node> left;
     std::shared_ptr<Node> right;
-
     std::shared_ptr<Node> back;
     
-    enum Field { Content, Left, Right, None };
-
+    enum Field { Content, Left, Right, Color, None };
+    
     struct Change {
         Field field;
         char  version;
         int new_content;
+        char new_color;
         std::shared_ptr<Node> new_left;
         std::shared_ptr<Node> new_right;
     };
@@ -51,7 +52,16 @@ class Node {
         else
             return content;
     }
-    
+
+    char latest_color() {
+        if(changes[1].field == Color)
+            return changes[1].new_color;
+        if(changes->field == Color)
+            return changes->new_color;
+        else
+            return color;
+    }
+   
     // precondition: The node is a child
     bool is_left_child(){
         if (left.get() == this)
@@ -67,8 +77,15 @@ class Node {
 
     public:
 
-    Node(int content) : content{content}, left{nullptr}, right{nullptr},
-                        back{nullptr}, i{0}
+    Node(int content, char color) : content{content}, color{color}, left{nullptr},
+                         right{nullptr}, back{nullptr}, i{0}
+    {
+        changes[0].field = None;
+        changes[1].field = None;
+    }
+
+    Node(Node *node) : content{node->content}, color{node->color}, left{nullptr},
+                        right{nullptr}, back{nullptr}, i{0}
     {
         changes[0].field = None;
         changes[1].field = None;
@@ -87,6 +104,17 @@ class Node {
         }
         
         return value;
+    }
+
+    char get_color(int version) {
+        char vcolor = color;
+        for (int v = 0; v < 2; ++v){
+            if (changes[v].field == Color and changes[v].version <= version){
+            vcolor = changes[v].new_content;
+            }
+        }
+        
+        return vcolor;
     }
 
     std::shared_ptr<Node> get_left(int version) {
@@ -122,7 +150,7 @@ class Node {
             ++i;
         } else {
             // create a new node with all modifications of fields updated, and all back pointers copied
-            std::shared_ptr<Node> new_node {new Node(latest_content())};
+            std::shared_ptr<Node> new_node {new Node(latest_content(), latest_color())};
             auto lleft = latest_left();
             auto lright = latest_right();
             new_node->left = lleft;
@@ -154,7 +182,49 @@ class Node {
         return nullptr;
     }
 
-    std::shared_ptr<Node> modfy_left(std::shared_ptr<Node> &left_node, int latest_version) {
+     std::shared_ptr<Node> modfy(char color, int latest_version) {
+        if (i < 2){
+            changes[i].field = Color;
+            changes[i].new_color = color;
+            changes[i].version = latest_version+1;
+            ++i;
+        } else {
+            // create a new node with all modifications of fields updated, and all back pointers copied
+            std::shared_ptr<Node> new_node {new Node(latest_content(), latest_color())};
+            auto lleft = latest_left();
+            auto lright = latest_right();
+            new_node->left = lleft;
+            new_node->right = lright;
+            new_node-> back = this->back;
+            // update back pointers of child nodes to the latest version
+            if(lleft){
+                lleft->back = new_node; // copy
+            }
+            if(lright){
+                lright->back = new_node;
+            }
+            // apply new modifications, always returns nullptr
+            new_node->modfy(content, latest_version);
+
+            if (new_node->back){
+                // update pointer of the node that points to this node
+                if (new_node->is_left_child())
+                    return new_node->back->modfy_left(new_node, latest_version);
+                else
+                    return new_node->back->modfy_right(new_node, latest_version);
+            } else {
+                // new root in version latest_version
+                return new_node;
+            }
+
+        }
+
+        return nullptr;
+    }
+
+
+
+    std::shared_ptr<Node> modfy_left(const std::shared_ptr<Node> &left_node, int latest_version) {
         if (i < 2){
             changes[i].field = Left;
             changes[i].new_left = left_node;
@@ -163,7 +233,7 @@ class Node {
             ++i;
         } else {
             // create a new node with all modifications of fields updated, and all back pointers copied
-            std::shared_ptr<Node> new_node {new Node(latest_content())};
+            std::shared_ptr<Node> new_node {new Node(latest_content(), latest_color())};
             auto lleft = latest_left();
             auto lright = latest_right();
             new_node->left = lleft;
@@ -194,7 +264,7 @@ class Node {
         return nullptr;
     }
 
-    std::shared_ptr<Node> modfy_right(std::shared_ptr<Node> &right_node, int latest_version) {
+    std::shared_ptr<Node> modfy_right(const std::shared_ptr<Node> &right_node, int latest_version) {
         if (i < 2){
             changes[i].field = Right;
             changes[i].new_right = right_node;
@@ -202,7 +272,7 @@ class Node {
             ++i;
         } else {
             // create a new node with all modifications of fields updated, and all back pointers copied
-            std::shared_ptr<Node> new_node {new Node(latest_content())};
+            std::shared_ptr<Node> new_node {new Node(latest_content(), latest_color())};
             auto lleft = latest_left();
             auto lright = latest_right();
             new_node->left = lleft;
