@@ -1,141 +1,178 @@
 #include <iostream>
 #include "rbnode.hpp"
-#include <iterator>
-#include <memory>
-#include <type_traits>
 #include <vector>
 
+
+using namespace RBNode;
 
 class RBTree {
     
     int latest_version;
-    std::vector <std::shared_ptr<Node>> heads;
+    std::vector <Node*> heads;
 
-    std::shared_ptr<Node> get_head(int version) {
+    Node *get_head(int version) {
         for (int i = version; i >= 0; --i){
             if(heads.at(i)) {
                 return heads[i];
             }
         }
-        return std::shared_ptr<Node> {nullptr};
+        return nullptr;
     }
 
-    void modfy_node(std::shared_ptr<Node> &node, int value) {
-        if (latest_version == 0) {
-            heads[latest_version] = node;
-            return;
-        }
-        auto temp = node->modfy(value, latest_version);
-        
+    void modfy_node(Node *&node, int value) {
+        Node* temp = node->modfy(value, latest_version);
+        //node = node->new_splitted;
+
         if (temp) { 
-            heads[latest_version+1] = temp;
+            heads[latest_version] = temp;
         }
         else if (!node->get_back()) {
-            heads[latest_version+1] = node;
+            heads[latest_version] = node;
+        }
+        //++latest_version;
+    }
+
+    inline void modfy_left(Node *&node, Node *new_node, bool root=true) {
+        Node *temp = node->modfy_left(new_node, latest_version);
+        node = node->new_splitted;
+
+        if(root and temp) {
+            heads[latest_version] = temp;
+        }
+        //++latest_version;
+    }
+
+    inline void modfy_right(Node *&node, Node *new_node, bool root=true) {
+        Node *temp = node->modfy_right(new_node, latest_version);
+        node = node->new_splitted;
+        
+        if(root and temp) {
+            heads[latest_version] = temp;
+        }
+        //++latest_version;
+    }
+
+    inline void modfy_color(Node *&node, bool color, bool root=true) {
+        Node *temp = node->modfy(color, latest_version);
+        node = node->new_splitted;
+        
+        if(root and temp) {
+            heads[latest_version] = temp;
+        }
+        //++latest_version;
+    }
+
+
+    inline void rrotate(Node *&y) {
+        Node *x = y->get_left(latest_version);
+        Node *rx = x->get_right(latest_version);
+    /*      y                   x
+           / \                 / \
+          x   ry   ---->      lx  y
+         / \                     / \
+        lx  rx                 rx   ry
+    */
+        bool left = y->is_left_child();
+        Node *yparent = y->get_back();
+        x->set_back(nullptr);
+        y->set_back(nullptr);
+        modfy_left(y, rx, !yparent);
+        modfy_right(x, y, !yparent);
+        x->set_back(yparent);
+        y->set_back(x);
+
+        if (yparent) {
+            if (left)   modfy_left(yparent, x);
+            else        modfy_right(yparent, x);
+            x->set_back(yparent);
         }
     }
 
-    inline void modfy_left(Node *node, std::shared_ptr<Node> &new_node) {
-        auto temp = node->modfy_left(new_node, latest_version);
-        if(temp) {
-            heads[latest_version+1] = temp;
+    inline void lrotate(Node *&y){
+        Node *x = y->get_right(latest_version);
+        Node *lx = x->get_left(latest_version);
+    /*      y                   x
+           / \                 / \
+         ly   x   ---->       y  rx
+             / \             / \
+            lx rx           ly  lx
+    */
+        bool left = y->is_left_child();
+        Node *yparent = y->get_back();
+        x->set_back(nullptr);
+        y->set_back(nullptr);
+        modfy_right(y, lx, !yparent);
+        modfy_left(x, y, !yparent);
+        x->set_back(yparent);
+        y->set_back(x);
+
+        if (yparent) {
+            if (left)   modfy_left(yparent, x);
+            else        modfy_right(yparent, x);
+            x->set_back(yparent);
         }
     }
 
-    inline void modfy_right(Node *node, std::shared_ptr<Node> &new_node) {
-        auto temp = node->modfy_right(new_node, latest_version);
-        if(temp) {
-            heads[latest_version+1] = temp;
-        }
-    }
+    void fixtree(Node *new_node) {
+        Node *node = new_node;
+        Node *nodep = node->get_back();
+        Node* nodegp { nullptr };
 
-    inline void modfy_color(Node *node, char color) {
-        auto temp = node->modfy(color, latest_version);
-        if(temp) {
-            heads[latest_version+1] = temp;
-        }
-    }
-
-
-    inline Node *rrotate(Node *y) {
-        auto node = std::make_shared<Node>(y);
-        Node *x = node->get_left(latest_version).get();
-        auto rx = x->get_right(latest_version);
-        modfy_right(x, node);
-        modfy_left(y, rx);
-        return x;
-    }
-
-    inline Node *lrotate(Node *y){
-        auto node = std::make_shared<Node>(y);
-        Node *x = node->get_right(latest_version).get();
-        auto lx = x->get_left(latest_version);
-        modfy_left(x, node);
-        modfy_right(y, lx);
-        return x;
-    }
-
-    // the path have more than one node
-    void fixtree(Node **path, int n) {
-        Node *node = path[n];
-        Node *nodep = path[n-1];
-        int i = n;
-
-        while (nodep != *path and nodep->get_color(latest_version) != 'r') {
-            if (nodep == path[i-2]->get_right(latest_version).get()) { // node's parent is a right child
-                Node *uncle = path[i-2]->get_left(latest_version).get();
-                if (uncle and uncle->get_color(latest_version) == 'r') {
-                    modfy_color(uncle, 'b');
-                    modfy_color(nodep, 'b');
-                    if (path[i-2] != *path) modfy_color(path[i-2], 'r'); // root needs to be black
+        while (nodep and nodep->is_red(latest_version)) {
+            nodegp = nodep->get_back();
+            if (nodep == nodegp->get_right(latest_version)) { // node's parent is a right child
+                Node *uncle = nodegp->get_left(latest_version);
+                if (uncle and uncle->is_red(latest_version)) {
+                    modfy_color(uncle, BLACK);
+                    modfy_color(nodep, BLACK);
+                    nodegp = nodep->get_back();
+                    if (nodegp->get_back()) modfy_color(nodegp, RED); // root needs to be black
                 } else { // node's uncle is black
-                    if (node == nodep->get_left(latest_version).get()) { //right left case
+                    if (node == nodep->get_left(latest_version)) { //right left case
                         rrotate(nodep);
-                        std::swap(node, nodep);
+                        nodep = node;
+                        nodegp = nodep->get_back();
                     }
-                    lrotate(path[i-2]);
-                    modfy_color(nodep, 'b');
-                    modfy_color(path[i-2], 'r');
+                    lrotate(nodegp);
+                    modfy_color(nodegp, RED);
+                    nodep = nodegp->get_back();
+                    modfy_color(nodep, BLACK);
                 }
             } else {    // node's parent is a left child
-                Node *uncle = path[i-2]->get_right(latest_version).get();
-                if (uncle and uncle->get_color(latest_version) == 'r') {
-                    modfy_color(uncle, 'b');
-                    modfy_color(nodep, 'b');
-                    if (path[i-2] != *path) modfy_color(path[i-2], 'r'); // root needs to be black
+                Node *uncle = nodegp->get_right(latest_version);
+                if (uncle and uncle->is_red(latest_version)) {
+                    modfy_color(uncle, BLACK);
+                    modfy_color(nodep, BLACK);
+                    nodegp = nodep->get_back();
+                    if (nodegp->get_back()) modfy_color(nodegp, RED); // root needs to be black
                 } else { // node's uncle is black
-                    if (node == nodep->get_right(latest_version).get()) { //left right case
+                    if (node == nodep->get_right(latest_version)) { //left right case
                         lrotate(nodep);
-                        std::swap(node, nodep);
+                        nodep = node;
+                        nodegp = nodep->get_back();
                     }
-                    rrotate(path[i-2]);
-                    modfy_color(nodep, 'b');
-                    modfy_color(path[i-2], 'r');
+                    rrotate(nodegp);
+                    modfy_color(nodegp, RED);
+                    nodep = nodegp->get_back();
+                    modfy_color(nodep, BLACK);
                 }
-               
             }
-            i -= 2;
-            node = path[i];
-            if (node == *path)    break;
-            nodep = path[i-1];
+            node  = nodegp;
+            nodep = node ? node->get_back() : nullptr;
         }
     }
 
     public:
-    RBTree() : latest_version{-1}, heads(100, nullptr) {}
+    RBTree() : latest_version{0}, heads(100, nullptr) {}
 
 
     void insert(int value) {
         
-        Node *node = nullptr;
-        auto temp = get_head(latest_version);
-        
-        Node *parents[20];
-        int k = -1;
+        Node *node {nullptr};
+        Node *temp = get_head(latest_version);
 
         while(temp){
-            node = temp.get();
-            parents[++k] = node;
+            node = temp;
             if(temp->get_value(latest_version) > value){
                 temp = temp->get_left(latest_version);
             } else {
@@ -143,90 +180,76 @@ class RBTree {
             }
         }
         
-
         if(!node) {  // root node
-            std::shared_ptr<Node> new_node{ new Node(value, 'b') };
-            modfy_node(new_node, value);
+            Node *new_node{ new Node(value, BLACK) };
             ++latest_version;
+            heads[latest_version] = new_node;
         } else {
-            std::shared_ptr<Node> new_node{ new Node(value, 'r') };
+            Node *new_node{ new Node(value, RED) };
+            ++latest_version;
             
             if (node->get_value(latest_version) > value)
                 modfy_left(node, new_node);
             else
                 modfy_right(node, new_node);
-            
-            parents[++k] = new_node.get();
 
-            fixtree(parents, k);
+            fixtree(new_node);
             
-            ++latest_version;
         }
 
     }
 
-    /*
-    Node* _insert(Node *head, Node *new_node) {
-        if (!head) {
-            return new_node;
-        }
+    void printtree(int version) {
+        printtree(get_head(version), version, 0);
+    }
+
+    void printtree(Node *node, int v, int h) {
+        if (!node)      return;
+
+        h += 5;
+        printtree(node->get_right(v), v, h);
+
+        std::cout << '\n';
+        for (int i = 5; i < h; ++i)     std::cout << ' ';
         
-        if (head->get_value(latest_version) > new_node->get_value(latest_version)) {
-            Node *tmp = _insert(head->get_left(latest_version).get(), new_node);
-            if(tmp)     modfy_left(head, new_node);
-        }
-        else {
-            Node *tmp = _insert(head->get_right(latest_version).get(), new_node);
-             if(tmp)    modfy_right(head, new_node);
-        }
-
-        return nullptr;
+        if (node->is_red(v))
+            std::cout << "\033[1;31m " << node->vdebug(v) <<"\033[0m\n";
+        else
+            std::cout << node->vdebug(v) << '\n';
+                
+        printtree(node->get_left(v), v, h);
     }
-    */
 
     void print(int version){
-        inorder(get_head(version).get(), version);
+        Node *node = get_head(version);
+        inorder(node, version);
         std::cout << '\n';
     }
 
     void inorder(Node *node, int version){
-        if(!node){
+        if(!node)
             return;
-        }
-        inorder(node->get_left(version).get(), version);
+        inorder(node->get_left(version), version);
         std::cout << node->get_value(version) << ' ';
-        inorder(node->get_right(version).get(), version);
+        inorder(node->get_right(version), version);
     }
 
-    ~RBTree() {}
+    ~RBTree() {
+    }
 
 };
 
 
 int main() {
     RBTree tree;
-    // 10,85,15,70,20,60,30,50,65,80,90,40,5 and 55    
-    tree.insert(10);
-    tree.insert(85);
-    tree.insert(15);
-    tree.insert(70);
-    tree.insert(20);
-    tree.insert(60);
-    tree.insert(30);
-    tree.insert(50);
-    tree.insert(65);
-    tree.insert(80);
-    tree.insert(90);
-    tree.insert(40);
-    tree.insert(5);
-    tree.insert(55);
+    int nodes[14] = {10,85,90,70,20,60,30,50,65,80,90,40,5,55};
     
-    for (int i = 0; i < 15; ++i){
-        tree.print(i);
+    for (int i = 0; i < 14; ++i){
+        tree.insert(nodes[i]);
+        std::cout << "---------------------------------------------------\n";
+        tree.print(i+1);
     }
 
 }
-
-
 
 
