@@ -1,5 +1,6 @@
 #include <iostream>
 #include "rbnode.hpp"
+#include <limits>
 #include <vector>
 
 
@@ -19,15 +20,12 @@ class RBTree {
         return nullptr;
     }
 
-    void modfy_node(Node *&node, int value) {
+    void modfy_value(Node *&node, int value) {
         Node* temp = node->modfy(value, latest_version);
-        //node = node->new_splitted;
+        node = node->new_splitted;
 
-        if (temp) { 
+        if (temp) {
             heads[latest_version] = temp;
-        }
-        else if (!node->get_back()) {
-            heads[latest_version] = node;
         }
         //++latest_version;
     }
@@ -161,26 +159,149 @@ class RBTree {
             nodep = node ? node->get_back() : nullptr;
         }
     }
+    
+    // v is the node that was deleted and u is the child that replaces v
+    void fixDelete(Node *v, Node *u) {
+        auto vcolor = v->get_color(latest_version);
+        auto ucolor = u ? u->get_color(latest_version) : BLACK;
+
+        if (ucolor == RED and vcolor == BLACK) {
+            modfy_color(u, BLACK);
+            return;
+        }
+        if (vcolor == RED) {
+            return;
+        }
+
+        // now, both u and v are black
+        Node *s;
+        u = v;
+        Node *uparent = u->get_back();
+        while (ucolor == BLACK and uparent) {
+            if (u->is_left_child()) {
+                s = uparent->get_right(latest_version);
+                if (s->is_red(latest_version)) {
+                    lrotate(uparent);
+                    modfy_color(uparent, RED);
+                    s = uparent->get_back();
+                    modfy_color(s, BLACK);
+                }
+                else { // s is black
+                    Node *rs = s->get_right(latest_version);
+                    Node *ls = s->get_left(latest_version);
+                    auto rscolor = rs ? rs->get_color(latest_version) : BLACK;
+                    auto lscolor = ls ? ls->get_color(latest_version) : BLACK;
+
+                    if (rscolor == BLACK and lscolor == BLACK) {
+                        modfy_color(s, RED);
+                        u = s->get_back();
+                        if (u->is_red(latest_version)) {
+                            modfy_color(u, BLACK);
+                            break;
+                        }
+                    }
+                    else {
+                        if (rscolor == BLACK){ //right left case
+                            rrotate(s);
+                            modfy_color(s, RED);
+                            ls = s->get_back();
+                            modfy_color(ls, BLACK);
+                            s = ls;
+                            uparent = s->get_back();
+                        }
+                        lrotate(uparent);
+                        s = uparent->get_back();
+                        modfy_color(s, uparent->get_color(latest_version));
+                        rs = s->get_right(latest_version);
+                        modfy_color(rs, BLACK);
+                        if (uparent->is_red(latest_version))   modfy_color(uparent, BLACK);
+                        break;
+                    }
+                }
+            }
+            else {
+                s = uparent->get_left(latest_version);
+                if (s->is_red(latest_version)) {
+                    rrotate(uparent);
+                    modfy_color(uparent, RED);
+                    s = uparent->get_back();
+                    modfy_color(s, BLACK);
+                }
+                else { // s is black
+                    Node *rs = s->get_right(latest_version);
+                    Node *ls = s->get_left(latest_version);
+                    auto rscolor = rs ? rs->get_color(latest_version) : BLACK;
+                    auto lscolor = ls ? ls->get_color(latest_version) : BLACK;
+
+                    if (rscolor == BLACK and lscolor == BLACK) {
+                        modfy_color(s, RED);
+                        u = s->get_back();
+                         if (u->is_red(latest_version)) {
+                            modfy_color(u, BLACK);
+                            break;
+                        }
+                    }
+                    else {
+                        if (lscolor == BLACK){ //left right case
+                            lrotate(s);
+                            modfy_color(s, RED);
+                            rs = s->get_back();
+                            modfy_color(rs, BLACK);
+                            s = rs;
+                            uparent = s->get_back();
+                        }
+                        rrotate(uparent);
+                        s = uparent->get_back();
+                        modfy_color(s, uparent->get_color(latest_version));
+                        ls = s->get_left(latest_version);
+                        modfy_color(ls, BLACK);
+                        if (uparent->is_red(latest_version))   modfy_color(uparent, BLACK);
+                        break;
+                    }
+                }
+            }
+            ucolor = u->get_color(latest_version);
+            Node *uparent = u->get_back();
+        }
+
+        if (!(u->get_back()) and u->is_red(latest_version))     modfy_color(u, BLACK);
+    }
 
     public:
     RBTree() : latest_version{0}, heads(100, nullptr) {}
 
-
-    void insert(int value) {
-        
-        Node *node {nullptr};
-        Node *temp = get_head(latest_version);
+    bool search(int value, int version, Node *&node) {
+        Node *temp = get_head(version);
+        bool founded { false };
+        Node *snode { nullptr };
 
         while(temp){
             node = temp;
             if(temp->get_value(latest_version) > value){
                 temp = temp->get_left(latest_version);
-            } else {
+            }
+            else if (temp->get_value(latest_version) < value) {
+                temp = temp->get_right(latest_version);
+            }
+            else {
+                founded = true;
+                snode = temp;
                 temp = temp->get_right(latest_version);
             }
         }
         
-        if(!node) {  // root node
+        if (founded)    node = snode;
+
+        return founded;
+    }
+
+    void insert(int value) {
+        
+        Node *parent {nullptr};
+
+        search (value, latest_version, parent);
+        
+        if(!parent) {  // root node
             Node *new_node{ new Node(value, BLACK) };
             ++latest_version;
             heads[latest_version] = new_node;
@@ -188,15 +309,76 @@ class RBTree {
             Node *new_node{ new Node(value, RED) };
             ++latest_version;
             
-            if (node->get_value(latest_version) > value)
-                modfy_left(node, new_node);
+            if (parent->get_value(latest_version) < value)
+                modfy_right(parent, new_node);
             else
-                modfy_right(node, new_node);
+                modfy_left(parent, new_node);
 
             fixtree(new_node);
             
         }
+    }
+    
+    int successor(int value, int version) {
+        Node *node {nullptr};
+        if (!search(value, version, node))
+            return std::numeric_limits<int>::lowest();
+        Node *suc = successor(node, version);
+        if (!suc)
+            return std::numeric_limits<int>::max(); // or infinity();
+        return suc->get_value(version);
+    }
 
+    Node *successor(Node *node, int version) {
+        Node *suc = node->get_right(version);
+        Node *tmp { suc };
+        while (tmp) {
+            suc = tmp;
+            tmp = suc->get_left(version);
+        }
+        return suc;
+    }
+
+    void remove(int value) {
+        Node *node { nullptr };
+        if (!search (value, latest_version, node))
+            return;
+
+        Node *parent = node->get_back();        
+        Node *rnode = node->get_right(latest_version);
+        Node *lnode = node->get_left(latest_version);
+        ++latest_version;
+
+        if (!lnode) {
+            if (!parent)                    heads[latest_version] = rnode;
+            else if(node->is_left_child())  modfy_left(parent, rnode);
+            else                            modfy_right(parent, rnode);
+
+            if (rnode)      rnode->set_back(parent);
+            fixDelete(node, rnode);
+        }
+        else if (!rnode) {
+            if (!parent)                    heads[latest_version] = lnode;
+            else if(node->is_left_child())  modfy_left(parent, lnode);
+            else                            modfy_right(parent, lnode);
+
+            lnode->set_back(parent);
+            fixDelete(node, lnode);
+        }
+        else if (lnode and rnode) {
+            Node *suc = successor(node, latest_version);
+            modfy_value(node, suc->get_value(latest_version));
+
+            Node *rsuc = suc->get_right(latest_version);
+            
+            fixDelete(suc, rsuc);
+
+            Node *bsuc = suc->get_back();
+            if (suc->is_left_child())
+                modfy_left(bsuc, rsuc);
+            else
+                modfy_right(bsuc, rsuc);
+        }
     }
 
     void printtree(int version) {
@@ -213,9 +395,9 @@ class RBTree {
         for (int i = 5; i < h; ++i)     std::cout << ' ';
         
         if (node->is_red(v))
-            std::cout << "\033[1;31m " << node->vdebug(v) <<"\033[0m\n";
+            std::cout << "\033[1;31m " << node->get_value(v) <<"\033[0m\n";
         else
-            std::cout << node->vdebug(v) << '\n';
+            std::cout << node->get_value(v) << '\n';
                 
         printtree(node->get_left(v), v, h);
     }
@@ -242,14 +424,25 @@ class RBTree {
 
 int main() {
     RBTree tree;
-    int nodes[14] = {10,85,90,70,20,60,30,50,65,80,90,40,5,55};
+    int nodes[14]  = {10,85,90,70,20,60,30,50,65,80,90,40,5,55};
+    int nodes2[10] = {13,8,17,1,11,15,25,6,22,27};
+    int nodes3[8]  = {7,3,18,10,22,8,11,26};
+    int nodes4[8]  = {5, 2, 8, 1, 4, 7, 9, 0};
+
+    int end = 8;
     
-    for (int i = 0; i < 14; ++i){
-        tree.insert(nodes[i]);
+    for (int i = 0; i < end; ++i){
+        tree.insert(nodes4[i]);
+    }
+
+    
+    for (int i = end; i < end+2; ++i) {
         std::cout << "---------------------------------------------------\n";
-        tree.print(i+1);
+        tree.printtree(i);
+        if (i==end)    tree.remove(2);
     }
 
 }
+
 
 

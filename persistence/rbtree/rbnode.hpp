@@ -29,19 +29,6 @@ namespace RBNode {
 
         int i;
         Change changes[MAX_MODS];
-    public: 
-
-        std::string vdebug(int v) {
-            static std::ostringstream oss;
-            oss.str("");
-            
-            oss << get_value(v) << " i: " << i << " b: " <<
-                 ((back != nullptr) ? back->get_value(v) : 0)
-            << "(" << ((back != nullptr) ? back->i : -1) << ")";
-
-
-            return oss.str();
-        }
 
         Node *latest_left() {
             for (int y = MAX_MODS-1; y >= 0; --y){
@@ -79,6 +66,8 @@ namespace RBNode {
             return color;
         }
        
+        public:
+
         bool is_left_child(){
             if (!back)
                 return false;
@@ -94,9 +83,8 @@ namespace RBNode {
             return false;
         }
 
-        public:
 
-        Node(int content, bool color) : content{content}, color{color}, left{nullptr}, right{nullptr}, back{nullptr}, i{0}, new_splitted{nullptr}
+        Node(int content, bool color) : content{content}, color{color}, left{nullptr}, right{nullptr}, back{nullptr}, i{0}, new_splitted{this}
         {
             for (int y = 0; y < MAX_MODS; ++y){
                 changes[y].field = None;
@@ -200,6 +188,7 @@ namespace RBNode {
             } else {
                 // create a new node with all modifications of fields updated
                 Node *new_node {new Node(latest_content(), latest_color())};
+                new_splitted = new_node;
                 // apply new modifications, always returns nullnew_child
                 new_node->modfy(content, latest_version);
                 return modfy_helper(new_node, latest_version);
