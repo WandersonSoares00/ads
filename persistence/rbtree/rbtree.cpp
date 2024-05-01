@@ -2,6 +2,7 @@
 #include "rbnode.hpp"
 #include <limits>
 #include <vector>
+#include <sstream>
 
 
 using namespace RBNode;
@@ -12,22 +13,23 @@ class RBTree {
     std::vector <Node*> heads;
 
     Node *get_head(int version) {
-        for (int i = version; i >= 0; --i){
-            if(heads.at(i)) {
+        int i = version;
+        if (version > latest_version)   i = latest_version;
+        for (; i >= 0; --i){
+            if(heads[i]) {
                 return heads[i];
             }
         }
         return nullptr;
     }
 
-    void modfy_value(Node *&node, int value) {
+    inline void modfy_value(Node *&node, int value) {
         Node* temp = node->modfy(value, latest_version);
         node = node->new_splitted;
 
         if (temp) {
             heads[latest_version] = temp;
         }
-        //++latest_version;
     }
 
     inline void modfy_left(Node *&node, Node *new_node, bool root=true) {
@@ -37,7 +39,6 @@ class RBTree {
         if(root and temp) {
             heads[latest_version] = temp;
         }
-        //++latest_version;
     }
 
     inline void modfy_right(Node *&node, Node *new_node, bool root=true) {
@@ -47,7 +48,6 @@ class RBTree {
         if(root and temp) {
             heads[latest_version] = temp;
         }
-        //++latest_version;
     }
 
     inline void modfy_color(Node *&node, bool color, bool root=true) {
@@ -57,11 +57,10 @@ class RBTree {
         if(root and temp) {
             heads[latest_version] = temp;
         }
-        //++latest_version;
     }
 
 
-    inline void rrotate(Node *&y) {
+    void rrotate(Node *&y) {
         Node *x = y->get_left(latest_version);
         Node *rx = x->get_right(latest_version);
     /*      y                   x
@@ -86,7 +85,7 @@ class RBTree {
         }
     }
 
-    inline void lrotate(Node *&y){
+    void lrotate(Node *&y){
         Node *x = y->get_right(latest_version);
         Node *lx = x->get_left(latest_version);
     /*      y                   x
@@ -111,7 +110,7 @@ class RBTree {
         }
     }
 
-    void fixtree(Node *new_node) {
+    void fixInsert(Node *new_node) {
         Node *node = new_node;
         Node *nodep = node->get_back();
         Node* nodegp { nullptr };
@@ -128,7 +127,7 @@ class RBTree {
                 } else { // node's uncle is black
                     if (node == nodep->get_left(latest_version)) { //right left case
                         rrotate(nodep);
-                        nodep = node;
+                        nodep = nodep->get_back();
                         nodegp = nodep->get_back();
                     }
                     lrotate(nodegp);
@@ -146,7 +145,7 @@ class RBTree {
                 } else { // node's uncle is black
                     if (node == nodep->get_right(latest_version)) { //left right case
                         lrotate(nodep);
-                        nodep = node;
+                        nodep = nodep->get_back();
                         nodegp = nodep->get_back();
                     }
                     rrotate(nodegp);
@@ -261,7 +260,7 @@ class RBTree {
                 }
             }
             ucolor = u->get_color(latest_version);
-            Node *uparent = u->get_back();
+            uparent = u->get_back();
         }
 
         if (!(u->get_back()) and u->is_red(latest_version))     modfy_color(u, BLACK);
@@ -277,16 +276,16 @@ class RBTree {
 
         while(temp){
             node = temp;
-            if(temp->get_value(latest_version) > value){
-                temp = temp->get_left(latest_version);
+            if(temp->get_value(version) > value){
+                temp = temp->get_left(version);
             }
-            else if (temp->get_value(latest_version) < value) {
-                temp = temp->get_right(latest_version);
+            else if (temp->get_value(version) < value) {
+                temp = temp->get_right(version);
             }
             else {
                 founded = true;
                 snode = temp;
-                temp = temp->get_right(latest_version);
+                temp = temp->get_right(version);
             }
         }
         
@@ -314,23 +313,40 @@ class RBTree {
             else
                 modfy_left(parent, new_node);
 
-            fixtree(new_node);
-            
+            fixInsert(new_node);
         }
     }
     
     int successor(int value, int version) {
-        Node *node {nullptr};
-        if (!search(value, version, node))
+        Node *node = successor(get_head(version), value, version);
+        if (!node)
             return std::numeric_limits<int>::lowest();
-        Node *suc = successor(node, version);
-        if (!suc)
+        if (node->get_value(version) == value)
             return std::numeric_limits<int>::max(); // or infinity();
-        return suc->get_value(version);
+        return node->get_value(version);
     }
 
-    Node *successor(Node *node, int version) {
-        Node *suc = node->get_right(version);
+    Node *successor(Node *root, int value, int version) {
+        if (!root)
+            return nullptr;
+
+        int root_value = root->get_value(version);
+        Node *suc;
+
+        if (root_value == value)
+            suc = successor(root->get_right(version), value, version);
+        else if (root_value > value)
+            suc = successor(root->get_left(version), value, version);
+        else
+            return successor(root->get_right(version), value, version);
+
+        if (!suc)   return root;
+        if (suc->get_value(version) == value)   return root;
+        return suc;
+    }
+
+    Node *minValue(Node *node, int version) {
+        Node *suc { node };
         Node *tmp { suc };
         while (tmp) {
             suc = tmp;
@@ -366,7 +382,7 @@ class RBTree {
             fixDelete(node, lnode);
         }
         else if (lnode and rnode) {
-            Node *suc = successor(node, latest_version);
+            Node *suc = minValue(node->get_right(latest_version), latest_version);
             modfy_value(node, suc->get_value(latest_version));
 
             Node *rsuc = suc->get_right(latest_version);
@@ -402,18 +418,22 @@ class RBTree {
         printtree(node->get_left(v), v, h);
     }
 
-    void print(int version){
+    std::string inorder(int version){
         Node *node = get_head(version);
-        inorder(node, version);
-        std::cout << '\n';
+        std::ostringstream out;
+        _inorder(node, version, 0, out);
+        return out.str();
     }
 
-    void inorder(Node *node, int version){
+    void _inorder(Node *node, int version, int h, std::ostringstream &str){
         if(!node)
             return;
-        inorder(node->get_left(version), version);
-        std::cout << node->get_value(version) << ' ';
-        inorder(node->get_right(version), version);
+        _inorder(node->get_left(version), version, h + 1, str);
+        if (node->is_red(version))
+            str << node->get_value(version) << ',' << h << ',' << "R" << ' ';
+        else
+            str << node->get_value(version) << ',' << h << ',' << "N" << ' ';
+        _inorder(node->get_right(version), version, h + 1, str);
     }
 
     ~RBTree() {
@@ -421,28 +441,30 @@ class RBTree {
 
 };
 
-
+/*
 int main() {
     RBTree tree;
     int nodes[14]  = {10,85,90,70,20,60,30,50,65,80,90,40,5,55};
     int nodes2[10] = {13,8,17,1,11,15,25,6,22,27};
     int nodes3[8]  = {7,3,18,10,22,8,11,26};
     int nodes4[8]  = {5, 2, 8, 1, 4, 7, 9, 0};
+    int nodes5[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    int nodes6[14]  = {1, 10, 2, 9, 3, 8, 4, 5, 6, 11, 12, 13, 14, 15};
 
-    int end = 8;
+    int end = 14;
     
     for (int i = 0; i < end; ++i){
-        tree.insert(nodes4[i]);
+        tree.insert(nodes6[i]);
     }
 
-    
-    for (int i = end; i < end+2; ++i) {
+    tree.printtree(100);
+
+    for (int i = 1; i < end; ++i) {
         std::cout << "---------------------------------------------------\n";
-        tree.printtree(i);
-        if (i==end)    tree.remove(2);
+        std::cout << "suc de " << nodes5[i-1] << " v: " << 10 << " --- " << tree.successor(nodes5[i-1], 10) << '\n';
+        //std::cout << tree.successor(1, i) << '\n';
+        //if (i==end)    tree.remove(2);
     }
 
 }
-
-
-
+*/

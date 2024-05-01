@@ -68,6 +68,18 @@ namespace RBNode {
        
         public:
 
+        std::string vdebug(int v) {
+            static std::ostringstream oss;
+            oss.str("");
+
+            oss << get_value(v) << " i: " << i << " b: " <<
+                 ((back != nullptr) ? back->get_value(v) : 0)
+            << "(" << ((back != nullptr) ? back->i : -1) << ")";
+
+
+            return oss.str();
+        }
+
         bool is_left_child(){
             if (!back)
                 return false;
