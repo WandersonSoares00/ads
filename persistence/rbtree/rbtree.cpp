@@ -2,7 +2,9 @@
 #include "rbnode.hpp"
 #include <limits>
 #include <vector>
+#include <queue>
 #include <sstream>
+#include <unordered_map>
 
 
 using namespace RBNode;
@@ -437,34 +439,41 @@ class RBTree {
     }
 
     ~RBTree() {
+
+        std::queue <Node*> queue;
+        std::unordered_map<Node*,bool> visited;
+        
+        Node *node, *lnode, *rnode;
+        visited[nullptr] = true;
+
+        for (int v = 1; v < latest_version; ++v) {
+            node = get_head(v);
+            if (node) {
+                queue.push(node);
+                visited[node] = true;
+            }
+            while (!queue.empty()) {
+                node = queue.front();
+                queue.pop();
+                
+                lnode = node->get_left(v);
+                rnode = node->get_right(v);
+                if (!visited[lnode]) {
+                    queue.push(lnode);
+                    visited[lnode] = true;
+                }
+                if (!visited[rnode]) {
+                    queue.push(rnode);
+                    visited[rnode] = true;
+                }
+            }
+        }
+        
+        std::unordered_map<Node*, bool>::iterator it;
+        for (it = visited.begin(); it != visited.end(); ++it) {
+            delete it->first;
+        }
     }
 
 };
 
-/*
-int main() {
-    RBTree tree;
-    int nodes[14]  = {10,85,90,70,20,60,30,50,65,80,90,40,5,55};
-    int nodes2[10] = {13,8,17,1,11,15,25,6,22,27};
-    int nodes3[8]  = {7,3,18,10,22,8,11,26};
-    int nodes4[8]  = {5, 2, 8, 1, 4, 7, 9, 0};
-    int nodes5[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    int nodes6[14]  = {1, 10, 2, 9, 3, 8, 4, 5, 6, 11, 12, 13, 14, 15};
-
-    int end = 14;
-    
-    for (int i = 0; i < end; ++i){
-        tree.insert(nodes6[i]);
-    }
-
-    tree.printtree(100);
-
-    for (int i = 1; i < end; ++i) {
-        std::cout << "---------------------------------------------------\n";
-        std::cout << "suc de " << nodes5[i-1] << " v: " << 10 << " --- " << tree.successor(nodes5[i-1], 10) << '\n';
-        //std::cout << tree.successor(1, i) << '\n';
-        //if (i==end)    tree.remove(2);
-    }
-
-}
-*/
