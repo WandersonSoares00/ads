@@ -4,7 +4,7 @@
 #include <tuple>
 #include <sstream>
 #include <limits>
-#include "rbtree/rbtree.cpp"
+#include "rbtree/rbtree.cpp" // dont do it :p
 
 std::vector<std::tuple<std::string,int,int>> tokenize(const char *filename);
 
@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
     std::ofstream ofile(fout, std::ios::trunc);
 
     if (!ofile.is_open() or ofile.fail()) {
-        std::cerr << "could not open the file " << fin << '\n';
+        std::cerr << "could not open the file" << fin << '\n';
         exit(1);
     }
 
@@ -33,7 +33,6 @@ int main(int argc, char **argv) {
 
         if (inst      == "INC") {
             tree.insert(v1);
-            //tree.printtree();
         }
         else if (inst == "REM")
             tree.remove(v1);
@@ -61,7 +60,7 @@ std::vector<std::tuple<std::string,int,int>> tokenize(const char *filename) {
     std::ifstream infile(filename);
     
     if (!infile.is_open() or infile.fail()) {
-        std::cerr << "could not open the file " << filename << '\n';
+        std::cerr << "could not open the file" << filename << '\n';
         exit(1);
     }
     
