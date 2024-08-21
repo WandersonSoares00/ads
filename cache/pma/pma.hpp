@@ -1,6 +1,38 @@
 #pragma once
 
+#include <cstddef>
+#include <iostream>
 #include <vector>
+#include <memory>
+#include <limits>
+#include <algorithm>
+
+template <typename T>
+struct PMAAllocator {
+    using value_type = T;
+    T default_value;
+
+    PMAAllocator(T val) : default_value(val) {}
+
+    template <class U>
+    PMAAllocator(const PMAAllocator<U>&) {}
+
+    T* allocate(std::size_t n) {
+        if (n <= std::numeric_limits<std::size_t>::max() / sizeof(T)) {
+            if (auto ptr = static_cast<T*>(operator new(n * sizeof(T)))) {
+                std::fill(ptr, ptr + n, default_value);
+                return ptr;
+            }
+        }
+        throw std::bad_alloc();
+    }
+    void deallocate(T* ptr, std::size_t n) {
+        delete[] ptr;
+    }
+
+    ~PMAAllocator() = default;
+};
+
 
 //namespace PMA {
 
@@ -17,9 +49,23 @@ constexpr int gap = -1;
 class PMA
 {
 
-    std::vector<int> arr;
+    std::vector<int, PMAAllocator<int>> arr;
 
-public:
+    /**
+     * Calculates the logarithm base 2 of the given integer.
+     *
+     * @param x The integer for which to calculate the logarithm base 2.
+     * @return The logarithm base 2 of the given integer.
+     */
+    int log2(int x);
+
+    /**
+     * Calculates the segment size of the PMA.
+     *
+     * @return The segment size of the PMA.
+     */
+    inline int segmentSize();
+
     /**
      * Calculates the density of non-gap elements in the specified range of leaf nodes.
      *
@@ -41,20 +87,9 @@ public:
      */
     void rebalance(int begin_leaf, int end_leaf);
 
-    /**
-     * Calculates the logarithm base 2 of the given integer.
-     *
-     * @param x The integer for which to calculate the logarithm base 2.
-     * @return The logarithm base 2 of the given integer.
-     */
-    int log2(int x);
+public:
 
-    /**
-     * Calculates the segment size of the PMA.
-     *
-     * @return The segment size of the PMA.
-     */
-    inline int segmentSize();
+    PMA() : arr(PMAAllocator<int>(gap)) {}
 
     /**
      * @brief Searches for a value in the PMA array.

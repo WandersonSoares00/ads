@@ -1,5 +1,4 @@
 #include "pma.hpp"
-#include <iostream>
 
 int PMA::log2(int x) {
     int r = 0;
@@ -13,13 +12,13 @@ int PMA::segmentSize() {
 
 int PMA::search(int value) {
     int low  = 0;
-    int high = arr.size();
+    int high = arr.capacity();
     int mid = 0;
     
     while (low <= high) {
         mid = low + (high - low) / 2;
 
-        while (arr[mid] == gap and mid >= 0) --mid;
+        while (arr[mid] == gap and mid > low) --mid;
 
         if (arr[mid] == value or arr[mid] == gap) {
             break;
@@ -93,8 +92,8 @@ void PMA::rebalance(int begin_leaf, int end_leaf) {
 
 void PMA::print_debug() {
     std::cout << "[ ";
-    for (auto e : arr)
-        std::cout << e << ' ';
+    for (int i = 0; i < arr.capacity(); ++i)
+        std::cout << arr[i] << ' ';
     std::cout << "]\n";
 }
 
