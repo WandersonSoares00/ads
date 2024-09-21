@@ -51,14 +51,14 @@ class PMA {
    * @param x The integer for which to calculate the logarithm base 2.
    * @return The logarithm base 2 of the given integer.
    */
-  int log2(int x);
+  float log2(int x);
 
   /**
    * Calculates the segment size of the PMA.
    *
    * @return The segment size of the PMA.
    */
-  inline int segmentSize();
+  inline float segmentSize();
 
   /**
    * Calculates the density of non-gap elements in the specified range of leaf
@@ -68,7 +68,7 @@ class PMA {
    * @param end_leaf The index of the last leaf node in the range.
    * @return The density of non-gap elements in the specified range.
    */
-  int density(int begin_leaf, int end_leaf);
+  float density(int begin_leaf, int end_leaf);
 
   /**
    * @brief Rebalances the PMA tree within the specified range of leaf nodes.

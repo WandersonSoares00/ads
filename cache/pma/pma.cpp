@@ -1,14 +1,15 @@
 #include "pma.hpp"
+#include <cmath>
 #include <iostream>
 
-int PMA::log2(int x) {
-  int r = 0;
+float PMA::log2(int x) {
+  float r = 0;
   while (x >>= 1)
     ++r;
   return r;
 }
 
-int PMA::segmentSize() { return log2(arr.size()); }
+float PMA::segmentSize() { return log2(arr.capacity()); }
 
 int PMA::search(int value) {
   int low = 0;
@@ -34,15 +35,15 @@ int PMA::search(int value) {
   return mid;
 }
 
-int PMA::density(int begin_leaf, int end_leaf) {
-  int seg_size = segmentSize();
-  int total = 0;
-  for (int i = begin_leaf * seg_size, end = (end_leaf * seg_size) + seg_size;
-       i < end; ++i) {
+float PMA::density(int begin_leaf, int end_leaf) {
+  float total = 0;
+
+  for (int i = begin_leaf, end = end_leaf; i <= end; ++i) {
     if (arr[i] != gap)
       ++total;
   }
-  return total / (end_leaf - begin_leaf + 1) * seg_size;
+  auto val = total / float((end_leaf - begin_leaf + 1));
+  return val;
 }
 
 /*
@@ -58,29 +59,34 @@ Insert(x, y, z):
 void PMA::insert(int value) {
   if (arr.empty()) {
     arr.emplace_back(value);
+    arr.emplace(arr.begin(), gap);
     return;
   }
 
   int pos = search(value);
 
-  while (pos < arr.size() && arr[pos] < value) {
+  while (pos < arr.size() and arr[pos] != gap and arr[pos] < value) {
     pos++;
   }
 
-  if (pos < arr.size() && arr[pos] == value)
+  if (pos < arr.size() and arr[pos] == value)
     return;
 
   arr.emplace(arr.begin() + pos, value); // ordered insert
 
   int i = pos / segmentSize(); // starts in leaf
-  int j = i + 1;
+  int j = i + segmentSize() - 1;
 
   //  total number of nodes is N = 2L – 1, where L is the number of leaves
   int h = log2((2 * arr.size() / segmentSize()) - 1);
 
-  int d = density(i, i);
+  float d = density(i, j);
 
-  if (1 / 2 - (1 / 4 * d / h) <= d and d <= 3 / 4 + (1 / 4 * d / h)) {
+  return;
+
+  // If the D is out of thresholds, need rebalance
+  if (1.0 / 2.0 - (1.0 / 4.0 * d / h) > d or
+      d > 3.0 / 4.0 + (1.0 / 4.0 * d / h)) {
     do {
       if (i % 2) { // right child, then left scan
         i += (j - i);
@@ -89,7 +95,8 @@ void PMA::insert(int value) {
         j += (j - i);
         d += density(j - i, j);
       }
-    } while (1 / 2 - (1 / 4 * d / h) <= d and d <= 3 / 4 + (1 / 4 * d / h));
+    } while (1.0 / 2.0 - (1.0 / 4.0 * d / h) <= d and
+             d <= 3.0 / 4.0 + (1.0 / 4.0 * d / h));
 
     rebalance(i, j);
   }
@@ -99,7 +106,12 @@ void PMA::rebalance(int begin_leaf, int end_leaf) { return; }
 
 void PMA::print_debug() {
   std::cout << "[ ";
-  for (int i = 0; i < arr.capacity(); ++i)
+  for (int i = 0; i < arr.capacity(); ++i) {
+    if (arr[i] == gap) {
+      std::cout << "/ ";
+      continue;
+    }
     std::cout << arr[i] << ' ';
+  }
   std::cout << "]\n";
 }
