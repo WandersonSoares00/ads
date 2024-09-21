@@ -1,45 +1,48 @@
 #include "pma.hpp"
+#include <iostream>
 
 int PMA::log2(int x) {
-    int r = 0;
-    while (x >>= 1)  ++r;
-    return r;
+  int r = 0;
+  while (x >>= 1)
+    ++r;
+  return r;
 }
 
-int PMA::segmentSize() {
-    return log2(arr.size());
-}
+int PMA::segmentSize() { return log2(arr.size()); }
 
 int PMA::search(int value) {
-    int low  = 0;
-    int high = arr.capacity();
-    int mid = 0;
-    
-    while (low <= high) {
-        mid = low + (high - low) / 2;
+  int low = 0;
+  int high = arr.capacity();
+  int mid = 0;
 
-        while (arr[mid] == gap and mid > low) --mid;
+  while (low <= high) {
+    mid = low + (high - low) / 2;
 
-        if (arr[mid] == value or arr[mid] == gap) {
-            break;
-        }
+    while (arr[mid] == gap and mid > low)
+      --mid;
 
-        if (value > arr[mid])
-            low = mid + 1;
-        else
-            high = mid - 1;
+    if (arr[mid] == value or arr[mid] == gap) {
+      break;
     }
 
-    return mid;
+    if (value > arr[mid])
+      low = mid + 1;
+    else
+      high = mid - 1;
+  }
+
+  return mid;
 }
 
 int PMA::density(int begin_leaf, int end_leaf) {
-    int seg_size = segmentSize();
-    int total = 0;
-    for (int i = begin_leaf * seg_size, end = (end_leaf * seg_size) + seg_size; i < end; ++i) {
-        if (arr[i] != gap)   ++total;
-    }
-    return total / (end_leaf - begin_leaf + 1) * seg_size;
+  int seg_size = segmentSize();
+  int total = 0;
+  for (int i = begin_leaf * seg_size, end = (end_leaf * seg_size) + seg_size;
+       i < end; ++i) {
+    if (arr[i] != gap)
+      ++total;
+  }
+  return total / (end_leaf - begin_leaf + 1) * seg_size;
 }
 
 /*
@@ -53,48 +56,50 @@ Insert(x, y, z):
  * */
 
 void PMA::insert(int value) {
-    if (arr.empty()) {
-        arr.emplace_back(value);
-        return;
-    }
-
-    int pos = search(value);
-    
-    arr.emplace(arr.begin() + pos, value); // ordered insert
-    
-    int i = pos / segmentSize(); // starts in leaf
-    int j = i + 1;
-
-    //  total number of nodes is N = 2L – 1, where L is the number of leaves
-    int h = log2((2 * arr.size() / segmentSize()) - 1);
-    
-    int d = density(i, i);
-
-    if (1 / 2 - (1 / 4 * d / h) <= d and d <=  3 / 4 + (1 / 4 * d / h)) {
-        do {
-            if (i % 2){  // right child, then left scan
-                i += (j - i); 
-                d += density(j - i, i);
-            }
-            else{  // left child, then right scan
-                j += (j - i); 
-                d += density(j - i, j);
-            }
-        } while (1 / 2 - (1 / 4 * d / h) <= d and d <=  3 / 4 + (1 / 4 * d / h));
-        
-        rebalance(i, j);
-    }
-}
-
-void PMA::rebalance(int begin_leaf, int end_leaf) {
+  if (arr.empty()) {
+    arr.emplace_back(value);
     return;
+  }
+
+  int pos = search(value);
+
+  while (pos < arr.size() && arr[pos] < value) {
+    pos++;
+  }
+
+  if (pos < arr.size() && arr[pos] == value)
+    return;
+
+  arr.emplace(arr.begin() + pos, value); // ordered insert
+
+  int i = pos / segmentSize(); // starts in leaf
+  int j = i + 1;
+
+  //  total number of nodes is N = 2L – 1, where L is the number of leaves
+  int h = log2((2 * arr.size() / segmentSize()) - 1);
+
+  int d = density(i, i);
+
+  if (1 / 2 - (1 / 4 * d / h) <= d and d <= 3 / 4 + (1 / 4 * d / h)) {
+    do {
+      if (i % 2) { // right child, then left scan
+        i += (j - i);
+        d += density(j - i, i);
+      } else { // left child, then right scan
+        j += (j - i);
+        d += density(j - i, j);
+      }
+    } while (1 / 2 - (1 / 4 * d / h) <= d and d <= 3 / 4 + (1 / 4 * d / h));
+
+    rebalance(i, j);
+  }
 }
+
+void PMA::rebalance(int begin_leaf, int end_leaf) { return; }
 
 void PMA::print_debug() {
-    std::cout << "[ ";
-    for (int i = 0; i < arr.capacity(); ++i)
-        std::cout << arr[i] << ' ';
-    std::cout << "]\n";
+  std::cout << "[ ";
+  for (int i = 0; i < arr.capacity(); ++i)
+    std::cout << arr[i] << ' ';
+  std::cout << "]\n";
 }
-
-
