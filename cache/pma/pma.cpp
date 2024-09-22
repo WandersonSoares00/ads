@@ -36,12 +36,14 @@ int PMA::search(int value) {
 }
 
 int PMA::scan(int begin_leaf, int end_leaf) {
-    int seg_size = segmentSize();
-    int total = 0;
-    for (int i = begin_leaf * seg_size, end = end_leaf * seg_size; i < end; ++i) {
-        if (arr[i] != gap)   ++total;
-    }
-    return total;
+  int seg_size = segmentSize();
+  int total = 0;
+
+  for (int i = begin_leaf * seg_size, end = end_leaf * seg_size; i < end; ++i) {
+    if (arr[i] != gap)
+      ++total;
+  }
+  return total;
 }
 
 /*
@@ -70,88 +72,88 @@ void PMA::insert(int value) {
     return;
 
   arr.emplace(arr.begin() + pos, value); // ordered insert
-    
-  int seg_size = seg_size;
-  // i e j são índices das folhas, inicialmente é apenas uma folha(onde ocorreu a inserção) então j = i + 1
-  // O intervalo de elementos no array será arr[i * segmentSize() ... j * segmentSize() - 1]
-  int i = pos / seg_size; // starts in leaf
-  int j = i + /* segmentSize() - */ 1;
+
+  int seg_size = segmentSize();
+  // i e j são índices das folhas, inicialmente é apenas uma folha(onde ocorreu
+  // a inserção) então j = i + 1. O intervalo de elementos no array será arr[i *
+  // segmentSize() ... j * segmentSize() - 1]
+  int begin_leaf = pos / seg_size; // starts in leaf
+  int end_leaf = begin_leaf + /* segmentSize() - */ 1;
 
   //  total number of nodes is N = 2L – 1, where L is the number of leaves
-  int h = log2((2 * arr.size() / seg_size) - 1);
-  float depth = h;
+  int height = log2((2 * arr.size() / seg_size) - 1);
+  float depth = height;
 
-  float density = (float) scan(i, j) / seg_size;
+  float density = (float)scan(begin_leaf, end_leaf) / seg_size;
 
-  return;
-  
-  //TODO: verificar subida
-  // If the D is out of thresholds, need rebalance
-  //if (density < 0.25) {
+  // TODO: verificar subida
+  //  If the D is out of thresholds, need rebalance
   int num_segs = arr.capacity() / seg_size;
-  int node = i;
+  int node = begin_leaf;
   do {
-    if (node % 2){  // right child, then left scan
-      density += (scan(i - j - i, i) / (float) seg_size);
-      i -= (j - i);
+    if (node % 2) { // right child, then left scan
+      density += (scan(begin_leaf - (end_leaf - begin_leaf), begin_leaf) /
+                  (float)seg_size);
+      begin_leaf -= (end_leaf - begin_leaf);
+    } else { // left child, then right scan
+      density += (scan(end_leaf, end_leaf + (end_leaf - begin_leaf)) /
+                  (float)seg_size);
+      end_leaf += (end_leaf - begin_leaf);
     }
-    else{  // left child, then right scan
-      density += (scan(j, j + j - i) / (float) seg_size);
-      j += (j - i);
-    }
-    
-    if (depth == 0)     break;
-    
+
+    if (depth == 0)
+      break;
+
     --depth;
-    num_segs = num_segs / (j - i);
-    node = num_segs / j;
-  } while (1.0 / 2.0 - (1.0 / 4.0 * depth / h) > density and density >  3.0 / 4.0 + (1.0 / 4.0 * depth / h));
+    num_segs = num_segs / (end_leaf - begin_leaf);
+    node = num_segs / end_leaf;
+
+  } while (density < 1.0 / 2.0 - (1.0 / 4.0 * depth / height) or
+           density > 3.0 / 4.0 + (1.0 / 4.0 * depth / height));
 
   if (depth != 0)
-    rebalance(i, j);
-//}
-
+    rebalance(begin_leaf, end_leaf);
 }
 
 void PMA::rebalance(int begin_leaf, int end_leaf) {
-    int num_elements = 0;
-    int number_gaps = 0;
-    int seg_size = segmentSize();
-    int max_elements = (end_leaf - begin_leaf) * seg_size;
-    
-    // TODO: duplicar array(quando necessário...), algo assim:
-    //arr.reserve(arr.capacity() * 2);
-    //begin_leaf *= 2;
-    //end_leaf *= 2;
+  int num_elements = 0;
+  int number_gaps = 0;
+  int seg_size = segmentSize();
+  int max_elements = (end_leaf - begin_leaf) * seg_size;
 
-    int *elements = new int[max_elements];
-    for (int i = begin_leaf * seg_size, end = end_leaf * seg_size; i < end; ++i) {
-        if (arr[i] == gap)   ++number_gaps;
-        else {
-            elements[num_elements++] = arr[i];
-            arr[i] = gap;
-        }
-    }
-    
-    if (num_elements == 1) {
-        arr[number_gaps / 2] = elements[0];
-    }
+  // TODO: duplicar array(quando necessário...), algo assim:
+  // arr.reserve(arr.capacity() * 2);
+  // begin_leaf *= 2;
+  // end_leaf *= 2;
+
+  int *elements = new int[max_elements];
+  for (int i = begin_leaf * seg_size, end = end_leaf * seg_size; i < end; ++i) {
+    if (arr[i] == gap)
+      ++number_gaps;
     else {
-        // minimum space between elements
-        int m = (max_elements - num_elements) / (num_elements - 1);
-        // extra spaces to distribute
-        int extra_spaces = (max_elements - num_elements) % (num_elements - 1);
-        
-        for (int i = 0, index = begin_leaf * seg_size; i < num_elements; ++i) {
-            arr[index] = elements[i];
-            index += m + 1;
-            if (i < extra_spaces)   ++index;
-        }
+      elements[num_elements++] = arr[i];
+      arr[i] = gap;
     }
+  }
 
-    delete[] elements;
+  if (num_elements == 1) {
+    arr[number_gaps / 2] = elements[0];
+  } else {
+    // minimum space between elements
+    int m = (max_elements - num_elements) / (num_elements - 1);
+    // extra spaces to distribute
+    int extra_spaces = (max_elements - num_elements) % (num_elements - 1);
+
+    for (int i = 0, index = begin_leaf * seg_size; i < num_elements; ++i) {
+      arr[index] = elements[i];
+      index += m + 1;
+      if (i < extra_spaces)
+        ++index;
+    }
+  }
+
+  delete[] elements;
 }
-
 
 void PMA::print_debug() {
   std::cout << "[ ";
