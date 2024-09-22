@@ -68,7 +68,7 @@ class PMA {
    * @param end_leaf The index of the last leaf node in the range.
    * @return The density of non-gap elements in the specified range.
    */
-  float density(int begin_leaf, int end_leaf);
+  int scan(int begin_leaf, int end_leaf);
 
   /**
    * @brief Rebalances the PMA tree within the specified range of leaf nodes.

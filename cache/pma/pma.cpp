@@ -35,15 +35,13 @@ int PMA::search(int value) {
   return mid;
 }
 
-float PMA::density(int begin_leaf, int end_leaf) {
-  float total = 0;
-
-  for (int i = begin_leaf, end = end_leaf; i <= end; ++i) {
-    if (arr[i] != gap)
-      ++total;
-  }
-  auto val = total / float((end_leaf - begin_leaf + 1));
-  return val;
+int PMA::scan(int begin_leaf, int end_leaf) {
+    int seg_size = segmentSize();
+    int total = 0;
+    for (int i = begin_leaf * seg_size, end = end_leaf * seg_size; i < end; ++i) {
+        if (arr[i] != gap)   ++total;
+    }
+    return total;
 }
 
 /*
@@ -59,7 +57,6 @@ Insert(x, y, z):
 void PMA::insert(int value) {
   if (arr.empty()) {
     arr.emplace_back(value);
-    arr.emplace(arr.begin(), gap);
     return;
   }
 
@@ -73,36 +70,88 @@ void PMA::insert(int value) {
     return;
 
   arr.emplace(arr.begin() + pos, value); // ordered insert
-
-  int i = pos / segmentSize(); // starts in leaf
-  int j = i + segmentSize() - 1;
+    
+  int seg_size = seg_size;
+  // i e j são índices das folhas, inicialmente é apenas uma folha(onde ocorreu a inserção) então j = i + 1
+  // O intervalo de elementos no array será arr[i * segmentSize() ... j * segmentSize() - 1]
+  int i = pos / seg_size; // starts in leaf
+  int j = i + /* segmentSize() - */ 1;
 
   //  total number of nodes is N = 2L – 1, where L is the number of leaves
-  int h = log2((2 * arr.size() / segmentSize()) - 1);
+  int h = log2((2 * arr.size() / seg_size) - 1);
+  float depth = h;
 
-  float d = density(i, j);
+  float density = (float) scan(i, j) / seg_size;
 
   return;
-
+  
+  //TODO: verificar subida
   // If the D is out of thresholds, need rebalance
-  if (1.0 / 2.0 - (1.0 / 4.0 * d / h) > d or
-      d > 3.0 / 4.0 + (1.0 / 4.0 * d / h)) {
-    do {
-      if (i % 2) { // right child, then left scan
-        i += (j - i);
-        d += density(j - i, i);
-      } else { // left child, then right scan
-        j += (j - i);
-        d += density(j - i, j);
-      }
-    } while (1.0 / 2.0 - (1.0 / 4.0 * d / h) <= d and
-             d <= 3.0 / 4.0 + (1.0 / 4.0 * d / h));
+  //if (density < 0.25) {
+  int num_segs = arr.capacity() / seg_size;
+  int node = i;
+  do {
+    if (node % 2){  // right child, then left scan
+      density += (scan(i - j - i, i) / (float) seg_size);
+      i -= (j - i);
+    }
+    else{  // left child, then right scan
+      density += (scan(j, j + j - i) / (float) seg_size);
+      j += (j - i);
+    }
+    
+    if (depth == 0)     break;
+    
+    --depth;
+    num_segs = num_segs / (j - i);
+    node = num_segs / j;
+  } while (1.0 / 2.0 - (1.0 / 4.0 * depth / h) > density and density >  3.0 / 4.0 + (1.0 / 4.0 * depth / h));
 
+  if (depth != 0)
     rebalance(i, j);
-  }
+//}
+
 }
 
-void PMA::rebalance(int begin_leaf, int end_leaf) { return; }
+void PMA::rebalance(int begin_leaf, int end_leaf) {
+    int num_elements = 0;
+    int number_gaps = 0;
+    int seg_size = segmentSize();
+    int max_elements = (end_leaf - begin_leaf) * seg_size;
+    
+    // TODO: duplicar array(quando necessário...), algo assim:
+    //arr.reserve(arr.capacity() * 2);
+    //begin_leaf *= 2;
+    //end_leaf *= 2;
+
+    int *elements = new int[max_elements];
+    for (int i = begin_leaf * seg_size, end = end_leaf * seg_size; i < end; ++i) {
+        if (arr[i] == gap)   ++number_gaps;
+        else {
+            elements[num_elements++] = arr[i];
+            arr[i] = gap;
+        }
+    }
+    
+    if (num_elements == 1) {
+        arr[number_gaps / 2] = elements[0];
+    }
+    else {
+        // minimum space between elements
+        int m = (max_elements - num_elements) / (num_elements - 1);
+        // extra spaces to distribute
+        int extra_spaces = (max_elements - num_elements) % (num_elements - 1);
+        
+        for (int i = 0, index = begin_leaf * seg_size; i < num_elements; ++i) {
+            arr[index] = elements[i];
+            index += m + 1;
+            if (i < extra_spaces)   ++index;
+        }
+    }
+
+    delete[] elements;
+}
+
 
 void PMA::print_debug() {
   std::cout << "[ ";
