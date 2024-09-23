@@ -51,14 +51,16 @@ class PMA {
    * @param x The integer for which to calculate the logarithm base 2.
    * @return The logarithm base 2 of the given integer.
    */
-  float log2(int x);
+  int log2(int x);
 
   /**
    * Calculates the segment size of the PMA.
    *
    * @return The segment size of the PMA.
    */
-  inline float segmentSize();
+  inline int segmentSize();
+
+  inline int numberSegments();
 
   /**
    * Calculates the density of non-gap elements in the specified range of leaf
@@ -82,9 +84,10 @@ class PMA {
    * @param end_leaf The index of the last leaf node in the range.
    */
   void rebalance(int begin_leaf, int end_leaf, int depth);
-
+  
+  void dupCapacity();
 public:
-  PMA() : arr(PMAAllocator<int>(gap)) {}
+  PMA() : arr(PMAAllocator<int>(gap)) { arr.reserve(2); /* arr[0] = gap; arr[1] = gap; */ }
 
   /**
    * @brief Searches for a value in the PMA array.

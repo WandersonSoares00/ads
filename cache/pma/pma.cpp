@@ -1,15 +1,32 @@
 #include "pma.hpp"
 #include <cmath>
+#include <cstdio>
 #include <iostream>
 
-float PMA::log2(int x) {
-  float r = 0;
+int PMA::log2(int x) {
+  int r = 0;
   while (x >>= 1)
     ++r;
   return r;
 }
 
-float PMA::segmentSize() { return log2(arr.capacity()); }
+int PMA::numberSegments() {
+  int seg = log2(arr.capacity());
+  if (seg == 1)   return 1;
+  if (seg & 1)    return seg - 1;
+  return seg;
+}
+
+int PMA::segmentSize() {
+  return arr.capacity() / numberSegments();
+}
+
+void PMA::dupCapacity() {
+    int n = arr.capacity();
+    arr.reserve(2 * n);
+    for (int i = n; i < 2 * n; ++i)
+        arr[i] = gap;
+}
 
 int PMA::search(int value) {
   int low = 0;
@@ -57,28 +74,41 @@ Insert(x, y, z):
  * */
 
 void PMA::insert(int value) {
-  if (arr.empty()) {
+/*
+    if (arr.empty()) {
     arr.emplace_back(value);
     return;
   }
-
+*/
   int pos = search(value);
 
-  while (pos < arr.size() and arr[pos] != gap and arr[pos] < value) {
+  while (pos < arr.capacity() and arr[pos] != gap and arr[pos] < value) {
     pos++;
   }
 
+  if (pos == arr.capacity()) {
+    print_debug();
+    //arr.reserve(arr.capacity() * 2);
+    //dupCapacity();
+    arr.emplace_back(gap);
+    print_debug();
+  }
+  //arr[pos] = value;
   arr.emplace(arr.begin() + pos, value); // ordered insert
+  printf("inseriu: %d na pos %d size: %d\n", value, pos, arr.size());
+  print_debug();
+  if (arr.capacity() == 2) // root only
+    return;
 
   int seg_size = segmentSize();
   // i e j são índices das folhas, inicialmente é apenas uma folha(onde ocorreu
   // a inserção) então j = i + 1. O intervalo de elementos no array será arr[i *
   // segmentSize() ... j * segmentSize() - 1]
-  int begin_leaf = pos / seg_size; // starts in leaf
+  int begin_leaf = std::floor(pos / seg_size); // starts in leaf
   int end_leaf = begin_leaf + /* segmentSize() - */ 1;
 
   //  total number of nodes is N = 2L – 1, where L is the number of leaves
-  int height = log2((2 * arr.size() / seg_size) - 1);
+  int height = log2((2 * arr.capacity() / numberSegments()) - 1);
   float depth = height;
 
   float density = (float)scan(begin_leaf, end_leaf) / seg_size;
@@ -98,12 +128,11 @@ void PMA::insert(int value) {
 
     density /= 2.0;
 
-    printf("PMA::insert density: %.2f \n", density);
+    printf("PMA::insert density: (%d, %d) %.2f \n", begin_leaf, end_leaf, density);
 
-    if (depth == 0)
+    if (--depth == 0)
       break;
 
-    --depth;
     node = node >> 1;
   } while (density < 1.0 / 2.0 - (1.0 / 4.0 * depth / height) or
            density > 3.0 / 4.0 + (1.0 / 4.0 * depth / height));
@@ -111,7 +140,7 @@ void PMA::insert(int value) {
   //  If the D is out of thresholds, need rebalance
   if (density < 1.0 / 2.0 - (1.0 / 4.0 * depth / height) or
       density > 3.0 / 4.0 + (1.0 / 4.0 * depth / height)) {
-    printf("Fora do limite com %.0f\n", depth);
+    printf("Fora do limite com depth %.0f (%d, %d)\n", depth, begin_leaf, end_leaf);
     rebalance(begin_leaf, end_leaf, depth);
   }
 }
@@ -119,15 +148,21 @@ void PMA::insert(int value) {
 void PMA::rebalance(int begin_leaf, int end_leaf, int depth) {
   int num_elements = 0;
   int number_gaps = 0;
-  int seg_size = segmentSize();
-  int max_elements = (end_leaf - begin_leaf) * seg_size;
 
   if (depth == 0) {
-    return;
-    arr.reserve(arr.capacity() * 2);
+    int num_segs = numberSegments();
+    //arr.reserve(arr.capacity() * 2);
+    //dupCapacity();
+    arr.emplace_back(gap);
     begin_leaf = 0;
-    end_leaf *= 2;
+    if (num_segs < numberSegments())
+        end_leaf *= 2;
+    print_debug();
+    printf("---------- dup -----------\n");
   }
+
+  int seg_size = segmentSize();
+  int max_elements = (end_leaf - begin_leaf) * seg_size;
 
   int *elements = new int[max_elements];
   for (int i = begin_leaf * seg_size, end = end_leaf * seg_size; i < end; ++i) {
@@ -138,6 +173,7 @@ void PMA::rebalance(int begin_leaf, int end_leaf, int depth) {
       arr[i] = gap;
     }
   }
+    printf("%d gaps %d elements %d max_elements %d seg_size\n", number_gaps, number_gaps, max_elements, seg_size);
 
   if (num_elements == 1) {
     arr[number_gaps / 2] = elements[0];
@@ -155,6 +191,8 @@ void PMA::rebalance(int begin_leaf, int end_leaf, int depth) {
     }
   }
 
+  print_debug();
+  printf("---------- after dup -----------\n");
   delete[] elements;
 }
 
