@@ -68,9 +68,6 @@ void PMA::insert(int value) {
     pos++;
   }
 
-  if (pos < arr.size() and arr[pos] == value)
-    return;
-
   arr.emplace(arr.begin() + pos, value); // ordered insert
 
   int seg_size = segmentSize();
@@ -87,44 +84,50 @@ void PMA::insert(int value) {
   float density = (float)scan(begin_leaf, end_leaf) / seg_size;
 
   // TODO: verificar subida
-  //  If the D is out of thresholds, need rebalance
-  int num_segs = arr.capacity() / seg_size;
   int node = begin_leaf;
   do {
     if (node % 2) { // right child, then left scan
       density += (scan(begin_leaf - (end_leaf - begin_leaf), begin_leaf) /
-                  (float)seg_size);
+                  (float)(seg_size * (end_leaf - begin_leaf)));
       begin_leaf -= (end_leaf - begin_leaf);
     } else { // left child, then right scan
       density += (scan(end_leaf, end_leaf + (end_leaf - begin_leaf)) /
-                  (float)seg_size);
+                  (float)(seg_size * (end_leaf - begin_leaf)));
       end_leaf += (end_leaf - begin_leaf);
     }
+
+    density /= 2.0;
+
+    printf("PMA::insert density: %.2f \n", density);
 
     if (depth == 0)
       break;
 
     --depth;
-    num_segs = num_segs / (end_leaf - begin_leaf);
-    node = num_segs / end_leaf;
-
+    node = node >> 1;
   } while (density < 1.0 / 2.0 - (1.0 / 4.0 * depth / height) or
            density > 3.0 / 4.0 + (1.0 / 4.0 * depth / height));
 
-  if (depth != 0)
-    rebalance(begin_leaf, end_leaf);
+  //  If the D is out of thresholds, need rebalance
+  if (density < 1.0 / 2.0 - (1.0 / 4.0 * depth / height) or
+      density > 3.0 / 4.0 + (1.0 / 4.0 * depth / height)) {
+    printf("Fora do limite com %.0f\n", depth);
+    rebalance(begin_leaf, end_leaf, depth);
+  }
 }
 
-void PMA::rebalance(int begin_leaf, int end_leaf) {
+void PMA::rebalance(int begin_leaf, int end_leaf, int depth) {
   int num_elements = 0;
   int number_gaps = 0;
   int seg_size = segmentSize();
   int max_elements = (end_leaf - begin_leaf) * seg_size;
 
-  // TODO: duplicar array(quando necessário...), algo assim:
-  // arr.reserve(arr.capacity() * 2);
-  // begin_leaf *= 2;
-  // end_leaf *= 2;
+  if (depth == 0) {
+    return;
+    arr.reserve(arr.capacity() * 2);
+    begin_leaf = 0;
+    end_leaf *= 2;
+  }
 
   int *elements = new int[max_elements];
   for (int i = begin_leaf * seg_size, end = end_leaf * seg_size; i < end; ++i) {

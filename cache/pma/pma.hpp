@@ -81,7 +81,7 @@ class PMA {
    * @param begin_leaf The index of the first leaf node in the range.
    * @param end_leaf The index of the last leaf node in the range.
    */
-  void rebalance(int begin_leaf, int end_leaf);
+  void rebalance(int begin_leaf, int end_leaf, int depth);
 
 public:
   PMA() : arr(PMAAllocator<int>(gap)) {}
