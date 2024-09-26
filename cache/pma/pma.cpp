@@ -21,13 +21,6 @@ int PMA::numberSegments() {
 
 int PMA::segmentSize() { return arr.capacity() / numberSegments(); }
 
-void PMA::dupCapacity() {
-  int n = arr.capacity();
-  arr.reserve(2 * n);
-  for (int i = n; i < 2 * n; ++i)
-    arr[i] = gap;
-}
-
 int PMA::search(int value) {
   int low = 0;
   int high = arr.capacity();
@@ -81,7 +74,9 @@ void PMA::insert(int value) {
   }
 
   if (pos == arr.capacity()) {
-    dupCapacity();
+    arr.reserve(2 * arr.capacity());
+
+    printf("ME DUPLICARAM AQUIIII\n");
   }
   arr.emplace(arr.begin() + pos, value); // ordered insert
   print_debug();
@@ -138,32 +133,40 @@ void PMA::insert(int value) {
 void PMA::rebalance(int begin_leaf, int end_leaf, int depth) {
   int num_elements = 0;
   int number_gaps = 0;
-
-  if (depth == 0) {
-    int num_segs = numberSegments();
-    //arr.reserve(arr.capacity() * 2);
-    //dupCapacity();
-    arr.emplace_back(gap);
-    begin_leaf = 0;
-    if (num_segs < numberSegments())
-        end_leaf *= 2;
-    print_debug();
-    printf("---------- dup -----------\n");
-  }
-
   int seg_size = segmentSize();
-  int max_elements = (end_leaf - begin_leaf) * seg_size;
 
+  int max_elements = (end_leaf - begin_leaf) * seg_size;
+  // __AUTO_GENERATED_PRINT_VAR_START__
+  printf("PMA::rebalance max_elements: %d | seg_size: %d (%d, %d) \n",
+         max_elements, seg_size, begin_leaf, end_leaf);
   int *elements = new int[max_elements];
   for (int i = begin_leaf * seg_size, end = end_leaf * seg_size; i < end; ++i) {
     if (arr[i] == gap)
       ++number_gaps;
     else {
       elements[num_elements++] = arr[i];
-      arr[i] = gap;
+      // arr[i] = gap;
     }
   }
-    printf("%d gaps %d elements %d max_elements %d seg_size\n", number_gaps, number_gaps, max_elements, seg_size);
+  // print Elements
+  std::cout << "Save Elements: \n[ ";
+  for (int i = 0; i < num_elements; ++i) {
+    std::cout << elements[i] << ' ';
+  }
+  std::cout << "]\n";
+
+  if (depth == 0) {
+    int num_segs = numberSegments();
+    arr.reserve(2 * arr.capacity());
+    begin_leaf = 0;
+    if (num_segs < numberSegments())
+      end_leaf *= 2;
+    printf("---------- double -----------\n");
+  }
+  seg_size = segmentSize();
+
+  printf("gaps: %d | elements: %d | max_elements: %d | seg_size: %d \n",
+         number_gaps, num_elements, max_elements, seg_size);
 
   if (num_elements == 1) {
     arr[number_gaps / 2] = elements[0];
@@ -182,7 +185,6 @@ void PMA::rebalance(int begin_leaf, int end_leaf, int depth) {
   }
 
   print_debug();
-  printf("---------- after dup -----------\n");
   delete[] elements;
 }
 

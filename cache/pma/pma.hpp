@@ -84,10 +84,11 @@ class PMA {
    * @param end_leaf The index of the last leaf node in the range.
    */
   void rebalance(int begin_leaf, int end_leaf, int depth);
-  
-  void dupCapacity();
+
 public:
-  PMA() : arr(PMAAllocator<int>(gap)) { arr.reserve(2); /* arr[0] = gap; arr[1] = gap; */ }
+  PMA() : arr(PMAAllocator<int>(gap)) {
+    arr.reserve(2); /* arr[0] = gap; arr[1] = gap; */
+  }
 
   /**
    * @brief Searches for a value in the PMA array.
