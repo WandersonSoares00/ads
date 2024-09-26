@@ -85,6 +85,28 @@ class PMA {
    */
   void rebalance(int begin_leaf, int end_leaf, int depth);
 
+  /**
+   * @brief Checks if the given density, depth, and height values are within an
+   * acceptable threshold.
+   *
+   * This function returns a boolean indicating whether the provided parameters
+   * (density, depth, and height) fall within a predefined threshold or
+   * acceptable range of values. It is useful for validating measurements
+   * against certain criteria, such as in physical simulations or other areas
+   * involving these parameters.
+   *
+   * @param density The density value (float). Represents the density of a
+   * material or object.
+   * @param depth The depth value (size_t). Typically represents the depth in
+   * units of measurement.
+   * @param height The height value (size_t). Represents the height in units of
+   * measurement.
+   *
+   * @return true if the values are within the acceptable threshold; false
+   * otherwise.
+   */
+  inline bool insideThreshold(float density, size_t depth, size_t height);
+
 public:
   PMA() : arr(PMAAllocator<int>(gap)) {
     arr.reserve(2); /* arr[0] = gap; arr[1] = gap; */

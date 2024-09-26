@@ -1,5 +1,6 @@
 #include "pma.hpp"
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 #include <iostream>
 
@@ -10,7 +11,7 @@ int PMA::log2(int x) {
   return r;
 }
 
-int PMA::numberSegments() {
+int PMA::segmentSize() {
   int seg = log2(arr.capacity());
   if (seg == 1)
     return 1;
@@ -19,7 +20,22 @@ int PMA::numberSegments() {
   return seg;
 }
 
-int PMA::segmentSize() { return arr.capacity() / numberSegments(); }
+int PMA::numberSegments() { return arr.capacity() / segmentSize(); }
+
+bool PMA::insideThreshold(float density, size_t depth, size_t height) {
+  float razao;
+  if (height == 0) {
+    razao = 0;
+  } else {
+    razao = (float)depth / height;
+  }
+  printf("<><><> low(%.2f) <= density(%.2f)  <= high(%.2f)\n",
+         1.0 / 2.0 - (1.0 / 4.0 * razao), density,
+         3.0 / 4.0 + (1.0 / 4.0 * razao));
+
+  return (density >= 1.0 / 2.0 - (1.0 / 4.0 * razao) and
+          density <= 3.0 / 4.0 + (1.0 / 4.0 * razao));
+}
 
 int PMA::search(int value) {
   int low = 0;
@@ -49,6 +65,11 @@ int PMA::scan(int begin_leaf, int end_leaf) {
   int seg_size = segmentSize();
   int total = 0;
 
+  // __AUTO_GENERATED_PRINT_VAR_START__
+  printf("\t\tPMA::scan: (%d, %d)  Seg_size: %d\n", begin_leaf, end_leaf,
+         seg_size);
+
+  // __AUTO_GENERATED_PRINT_VAR_END__
   for (int i = begin_leaf * seg_size, end = end_leaf * seg_size; i < end; ++i) {
     if (arr[i] != gap)
       ++total;
@@ -73,11 +94,6 @@ void PMA::insert(int value) {
     pos++;
   }
 
-  if (pos == arr.capacity()) {
-    arr.reserve(2 * arr.capacity());
-
-    printf("ME DUPLICARAM AQUIIII\n");
-  }
   arr.emplace(arr.begin() + pos, value); // ordered insert
   print_debug();
 
@@ -86,7 +102,7 @@ void PMA::insert(int value) {
   // a inserção) então j = i + 1. O intervalo de elementos no array será arr[i *
   // segmentSize() ... j * segmentSize() - 1]
   int begin_leaf = pos / seg_size; // starts in leaf
-  int end_leaf = begin_leaf + /* segmentSize() - */ 1;
+  int end_leaf = begin_leaf + 1;
 
   //  total number of nodes is N = 2L – 1, where L is the number of leaves
   int height = log2((2 * arr.capacity() / numberSegments()) - 1);
@@ -95,7 +111,7 @@ void PMA::insert(int value) {
   float density = (float)scan(begin_leaf, end_leaf) / seg_size;
 
   int node = begin_leaf;
-  do {
+  while (depth > 0 and not insideThreshold(density, depth, height)) {
     if (node % 2) { // right child, then left scan
       density += (scan(begin_leaf - (end_leaf - begin_leaf), begin_leaf) /
                   (float)(seg_size * (end_leaf - begin_leaf)));
@@ -108,22 +124,16 @@ void PMA::insert(int value) {
 
     density /= 2.0;
 
-    if (--depth == 0)
-      break;
-
     node = node >> 1;
-  } while (density < 1.0 / 2.0 - (1.0 / 4.0 * depth / height) or
-           density > 3.0 / 4.0 + (1.0 / 4.0 * depth / height));
+    depth--;
+  };
 
   printf("<><><> depth %d (%d, %d)\n", depth, begin_leaf, end_leaf);
-  printf("<><><> low(%.2f) <= density(%.2f)  <= high(%.2f)\n",
-         1.0 / 2.0 - (1.0 / 4.0 * depth / height), density,
-         3.0 / 4.0 + (1.0 / 4.0 * depth / height));
 
   //  If the D is out of thresholds, need rebalance
-  if (density < 1.0 / 2.0 - (1.0 / 4.0 * depth / height) or
-      density > 3.0 / 4.0 + (1.0 / 4.0 * depth / height)) {
+  if (not insideThreshold(density, depth, height)) {
     printf("<><><> OUT OF THRESHOLD\n");
+    return;
 
     // ATE AQUI TA TUDO OK !!!!! @wanderson
     rebalance(begin_leaf, end_leaf, depth);
