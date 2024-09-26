@@ -12,20 +12,20 @@ int PMA::log2(int x) {
 
 int PMA::numberSegments() {
   int seg = log2(arr.capacity());
-  if (seg == 1)   return 1;
-  if (seg & 1)    return seg - 1;
+  if (seg == 1)
+    return 1;
+  if (seg & 1)
+    return seg - 1;
   return seg;
 }
 
-int PMA::segmentSize() {
-  return arr.capacity() / numberSegments();
-}
+int PMA::segmentSize() { return arr.capacity() / numberSegments(); }
 
 void PMA::dupCapacity() {
-    int n = arr.capacity();
-    arr.reserve(2 * n);
-    for (int i = n; i < 2 * n; ++i)
-        arr[i] = gap;
+  int n = arr.capacity();
+  arr.reserve(2 * n);
+  for (int i = n; i < 2 * n; ++i)
+    arr[i] = gap;
 }
 
 int PMA::search(int value) {
@@ -74,12 +74,6 @@ Insert(x, y, z):
  * */
 
 void PMA::insert(int value) {
-/*
-    if (arr.empty()) {
-    arr.emplace_back(value);
-    return;
-  }
-*/
   int pos = search(value);
 
   while (pos < arr.capacity() and arr[pos] != gap and arr[pos] < value) {
@@ -87,33 +81,24 @@ void PMA::insert(int value) {
   }
 
   if (pos == arr.capacity()) {
-    print_debug();
-    //arr.reserve(arr.capacity() * 2);
-    //dupCapacity();
-    arr.emplace_back(gap);
-    print_debug();
+    dupCapacity();
   }
-  //arr[pos] = value;
   arr.emplace(arr.begin() + pos, value); // ordered insert
-  printf("inseriu: %d na pos %d size: %d\n", value, pos, arr.size());
   print_debug();
-  if (arr.capacity() == 2) // root only
-    return;
 
   int seg_size = segmentSize();
   // i e j são índices das folhas, inicialmente é apenas uma folha(onde ocorreu
   // a inserção) então j = i + 1. O intervalo de elementos no array será arr[i *
   // segmentSize() ... j * segmentSize() - 1]
-  int begin_leaf = std::floor(pos / seg_size); // starts in leaf
+  int begin_leaf = pos / seg_size; // starts in leaf
   int end_leaf = begin_leaf + /* segmentSize() - */ 1;
 
   //  total number of nodes is N = 2L – 1, where L is the number of leaves
   int height = log2((2 * arr.capacity() / numberSegments()) - 1);
-  float depth = height;
+  int depth = height;
 
   float density = (float)scan(begin_leaf, end_leaf) / seg_size;
 
-  // TODO: verificar subida
   int node = begin_leaf;
   do {
     if (node % 2) { // right child, then left scan
@@ -128,8 +113,6 @@ void PMA::insert(int value) {
 
     density /= 2.0;
 
-    printf("PMA::insert density: (%d, %d) %.2f \n", begin_leaf, end_leaf, density);
-
     if (--depth == 0)
       break;
 
@@ -137,10 +120,17 @@ void PMA::insert(int value) {
   } while (density < 1.0 / 2.0 - (1.0 / 4.0 * depth / height) or
            density > 3.0 / 4.0 + (1.0 / 4.0 * depth / height));
 
+  printf("<><><> depth %d (%d, %d)\n", depth, begin_leaf, end_leaf);
+  printf("<><><> low(%.2f) <= density(%.2f)  <= high(%.2f)\n",
+         1.0 / 2.0 - (1.0 / 4.0 * depth / height), density,
+         3.0 / 4.0 + (1.0 / 4.0 * depth / height));
+
   //  If the D is out of thresholds, need rebalance
   if (density < 1.0 / 2.0 - (1.0 / 4.0 * depth / height) or
       density > 3.0 / 4.0 + (1.0 / 4.0 * depth / height)) {
-    printf("Fora do limite com depth %.0f (%d, %d)\n", depth, begin_leaf, end_leaf);
+    printf("<><><> OUT OF THRESHOLD\n");
+
+    // ATE AQUI TA TUDO OK !!!!! @wanderson
     rebalance(begin_leaf, end_leaf, depth);
   }
 }
