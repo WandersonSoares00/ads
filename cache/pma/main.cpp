@@ -8,7 +8,9 @@ int main() {
   std::uniform_int_distribution<> distrib(1, 100);
 
   for (int i = 0; i < 10; ++i) {
-    pma_arr.insert(distrib(gen));
+    int v = distrib(gen);
+    printf("%d - insert %d:\n", i+1, v);
+    pma_arr.insert(v);
     pma_arr.print_debug();
   }
 }
