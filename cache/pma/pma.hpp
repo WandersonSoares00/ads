@@ -108,6 +108,7 @@ class PMA {
    */
   inline int insideThreshold(float density, size_t depth, size_t height);
 
+  void shift(int pos);
 public:
 
   PMA() : arr(1, gap) {}
@@ -134,7 +135,7 @@ public:
    */
   void insert(int value);
 
-  void print_debug();
+  void print_debug(bool print_gap=true);
   // void remove(int value);
 };
 
