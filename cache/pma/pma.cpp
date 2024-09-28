@@ -47,7 +47,7 @@ int PMA::search(int value) {
   int high = arr.capacity();
   int mid = 0;
 
-  while (low < high) {
+  /* while (low < high) {
     mid = low + (high - low) / 2;
 
     while (arr[mid] == gap and mid > low)
@@ -63,7 +63,29 @@ int PMA::search(int value) {
       high = mid - 1;
   }
 
-  return mid;
+  return mid; */
+
+  while (low < high)
+  {
+    mid = low + (high - low) / 2;
+
+    while (mid > low and arr[mid] == gap)
+    {
+      --mid;
+    }
+    
+    if (arr[mid] == value) {
+      return mid;
+    }
+
+    if (value > arr[mid]) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+
+  return low;
 }
 
 int PMA::scan(int begin_leaf, int end_leaf) {
