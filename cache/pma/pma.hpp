@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <limits>
 #include <vector>
+#include "darray.hpp"
 
 template <typename T> struct PMAAllocator {
   using value_type = T;
@@ -43,8 +44,8 @@ constexpr int gap = -1;
  */
 class PMA {
 
-  std::vector<int, PMAAllocator<int>> arr;
-
+  //std::vector<int, PMAAllocator<int>> arr;
+  Darray arr;
   /**
    * Calculates the logarithm base 2 of the given integer.
    *
@@ -83,7 +84,7 @@ class PMA {
    * @param begin_leaf The index of the first leaf node in the range.
    * @param end_leaf The index of the last leaf node in the range.
    */
-  void rebalance(int begin_leaf, int end_leaf, int depth);
+  void rebalance(int begin_leaf, int end_leaf, int depth, int density);
 
   /**
    * @brief Checks if the given density, depth, and height values are within an
@@ -105,12 +106,13 @@ class PMA {
    * @return true if the values are within the acceptable threshold; false
    * otherwise.
    */
-  inline bool insideThreshold(float density, size_t depth, size_t height);
+  inline int insideThreshold(float density, size_t depth, size_t height);
 
 public:
-  PMA() : arr(PMAAllocator<int>(gap)) {
-    arr.reserve(2); /* arr[0] = gap; arr[1] = gap; */
-  }
+
+  PMA() : arr(1, gap) {}
+
+  PMA(std::vector<int> &arr_cp) : arr(arr_cp, gap) {}
 
   /**
    * @brief Searches for a value in the PMA array.

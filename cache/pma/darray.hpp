@@ -1,24 +1,34 @@
 #include <cstddef>
 #include <stdexcept>
+#include <vector>
 
 class Darray {
     int *arr;
     size_t n;
     int default_value;
 public:
-
     Darray(size_t n, int default_value) : n {n}, default_value{default_value} {
         arr = new int[n];
         for (size_t i = 0; i < n; ++i)  arr[i] = default_value;
     }
 
-    void dupCapacity() {
-        int *new_arr = new int[2 * n];
-        for (size_t i = 0; i < n; ++i)  new_arr[i] = arr[i];
-        n *= 2;
-        for (size_t i = n / 2; i < n; ++i)  arr[i] = default_value;
+    Darray(std::vector<int> &arr_cp, int default_value) : default_value{default_value} {
+        n = arr_cp.capacity();
+        arr = new int[n];
+        for (size_t i = 0; i < n; ++i)  arr[i] = arr_cp[i];
+    }
+
+    void reserve(size_t new_size) {
+        int *new_arr = new int[new_size];
+        for (size_t i = 0; i < n and i < new_size; ++i)  new_arr[i] = arr[i];
+        for (size_t i = n; i < new_size; ++i)  new_arr[i] = default_value;
+        n = new_size;
         delete[] arr;
         arr = new_arr;
+    }
+    
+    size_t capacity() {
+        return n;
     }
 
     int& operator[](size_t index) {
