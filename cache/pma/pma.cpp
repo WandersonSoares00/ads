@@ -297,3 +297,12 @@ void PMA::print_debug(bool print_gap) {
   std::cout << "]\n";
 }
 
+std::string PMA::print() {
+  std::ostringstream out;
+  for (int i = 0; i < arr.capacity(); ++i) {
+    if (arr[i] != gap)
+      out << arr[i] << ' ';
+  }
+  return out.str();
+}
+

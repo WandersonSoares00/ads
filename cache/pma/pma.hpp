@@ -5,7 +5,7 @@
 #include <limits>
 #include <vector>
 #include "darray.hpp"
-
+#include <sstream>
 
 // namespace PMA {
 
@@ -130,6 +130,8 @@ public:
   int successor(int value);
 
   void print_debug(bool print_gap=true);
+
+  std::string print();
 };
 
 //}
