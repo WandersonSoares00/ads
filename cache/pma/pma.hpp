@@ -6,27 +6,6 @@
 #include <vector>
 #include "darray.hpp"
 
-template <typename T> struct PMAAllocator {
-  using value_type = T;
-  T default_value;
-
-  PMAAllocator(T val) : default_value(val) {}
-
-  template <class U> PMAAllocator(const PMAAllocator<U> &) {}
-
-  T *allocate(std::size_t n) {
-    if (n <= std::numeric_limits<std::size_t>::max() / sizeof(T)) {
-      if (auto ptr = static_cast<T *>(operator new(n * sizeof(T)))) {
-        std::fill(ptr, ptr + n, default_value);
-        return ptr;
-      }
-    }
-    throw std::bad_alloc();
-  }
-  void deallocate(T *ptr, std::size_t n) { delete[] ptr; }
-
-  ~PMAAllocator() = default;
-};
 
 // namespace PMA {
 
@@ -44,7 +23,6 @@ constexpr int gap = -1;
  */
 class PMA {
 
-  //std::vector<int, PMAAllocator<int>> arr;
   Darray arr;
   /**
    * Calculates the logarithm base 2 of the given integer.
@@ -83,8 +61,9 @@ class PMA {
    *
    * @param begin_leaf The index of the first leaf node in the range.
    * @param end_leaf The index of the last leaf node in the range.
+   * @param dup Indicates whether it is necessary to duplicate the array.
    */
-  void rebalance(int begin_leaf, int end_leaf, int depth, int density);
+  void rebalance(int begin_leaf, int end_leaf, bool dup);
 
   /**
    * @brief Checks if the given density, depth, and height values are within an
@@ -109,9 +88,10 @@ class PMA {
   inline int insideThreshold(float density, size_t depth, size_t height);
 
   void shift(int pos);
+
 public:
 
-  PMA() : arr(1, gap) {}
+  PMA() : arr(gap) {}
 
   PMA(std::vector<int> &arr_cp) : arr(arr_cp, gap) {}
 
@@ -135,8 +115,21 @@ public:
    */
   void insert(int value);
 
+   /**
+   * Removes a value of the PMA.
+   *
+   * @param value The value to be removed.
+   */
+  void remove(int value);
+
+  /**
+   * Returns the successor of the given value in the PMA.
+   *
+   * @param value The value whose successor is to be returned.
+   */
+  int successor(int value);
+
   void print_debug(bool print_gap=true);
-  // void remove(int value);
 };
 
 //}

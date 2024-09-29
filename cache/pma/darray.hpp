@@ -7,6 +7,10 @@ class Darray {
     size_t n;
     int default_value;
 public:
+    Darray(int default_value) : n {0}, default_value{default_value} {
+        arr = nullptr;
+    }
+
     Darray(size_t n, int default_value) : n {n}, default_value{default_value} {
         arr = new int[n];
         for (size_t i = 0; i < n; ++i)  arr[i] = default_value;
